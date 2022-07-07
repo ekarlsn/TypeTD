@@ -1,0 +1,10 @@
+elm-stuff
+node_modules/
+package-lock.json
+public/elm.js
+.idea/
+temp/
+dist/
+.parcel-cache/
+
+code_gen/target/
