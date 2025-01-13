@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+    <head>
+        <script src="./audio.js"></script>
+        <script src="./main.js"></script>
+    </head>
+
+    <body>
+        <main></main>
+        <script src="./elm-canvas.js"></script>
+        <script type="text/javascript">
+            var app = Elm.Main.init({
+                node: document.querySelector("main"),
+            });
+
+            startAudio(app);
+        </script>
+    </body>
+</html>

@@ -1,0 +1,4 @@
+[build]
+base = "examples/docs/"
+publish = "dist/"
+command = "export ELM_HOME=\"$NETLIFY_BUILD_BASE/cache/elm\" && cp -r static dist && npx elm make src/Main.elm --output dist/main.js"
