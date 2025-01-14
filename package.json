@@ -4,6 +4,7 @@
         "elm-review": "^2.7.2"
     },
     "scripts": {
-        "build": "rm -rf dist && cp -r static dist && npx elm make src/Main.elm --output dist/main.js"
+        "build": "rm -rf dist && cp -r static dist && npx elm make src/Main.elm --output dist/main.js",
+        "hot": "rm -rf dist && cp -r static dist && npx elm make src/Main.elm --output dist/main.js && npx elm-watch@beta hot"
     }
 }
