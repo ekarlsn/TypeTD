@@ -24,5 +24,5 @@
 
 # Bugs
 
-* Upgrades are free between waves
+* You don't get the money back if you cancel a tower build before placing it
 * No sound, stopped working with new netlify deploy

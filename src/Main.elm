@@ -627,6 +627,7 @@ tickBetweenWaves dt m =
                         , towers = tickResult.towers
                         , buildSm = tickResult.buildSm
                         , freeBuildPoints = tickResult.freeBuildPoints
+                        , money = tickResult.money
                     }
                 , time = m.time + dt
             }
