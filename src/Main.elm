@@ -590,49 +590,67 @@ updateBetweenWaves msg model =
 tickBetweenWaves : Float -> BetweenWavesData -> Model
 tickBetweenWaves dt m =
     let
-        startCondition =
-            m.time > delayBetweenWaves
+        tickResult =
+            { buildSm = m.shared.buildSm
+            , towers = m.shared.towers
+            , freeBuildPoints =
+                m.shared.freeBuildPoints
+            , globalEffects = []
+            , globalDelayedEffects = []
+            , money = m.shared.money
+            , quit = False
+            , goToNextWave = False
+            }
+                |> tickMenuSystem
+                    m.shared.typedData
+                    m.shared.assetPack
+                |> tickGoToNextWave
+                    m.shared.typedData
     in
-    if startCondition then
+    if tickResult.quit then
+        levelFailed tickResult.money m.shared.assetPack m.shared.allLevels m.shared.entityGen m.shared.soundPack
+
+    else if tickResult.goToNextWave then
         Running <| startWave m
 
     else
         let
-            tickResult =
-                { buildSm = m.shared.buildSm
-                , towers = m.shared.towers
-                , freeBuildPoints =
-                    m.shared.freeBuildPoints
-                , globalEffects = []
-                , globalDelayedEffects = []
-                , money = m.shared.money
-                , quit = False
-                }
-                    |> tickMenuSystem
-                        m.shared.typedData
-                        m.shared.assetPack
+            srd =
+                m.shared
         in
-        if tickResult.quit then
-            levelFailed tickResult.money m.shared.assetPack m.shared.allLevels m.shared.entityGen m.shared.soundPack
+        BetweenWaves
+            { m
+                | shared =
+                    { srd
+                        | typedData =
+                            TypedData.clearCompletedWord srd.typedData
+                        , towers = tickResult.towers
+                        , buildSm = tickResult.buildSm
+                        , freeBuildPoints = tickResult.freeBuildPoints
+                    }
+                , time = m.time + dt
+            }
+            |> applyGlobalEffects tickResult.globalEffects
 
-        else
-            let
-                srd =
-                    m.shared
-            in
-            BetweenWaves
-                { m
-                    | shared =
-                        { srd
-                            | typedData =
-                                TypedData.clearCompletedWord srd.typedData
-                            , towers = tickResult.towers
-                            , buildSm = tickResult.buildSm
-                            , freeBuildPoints = tickResult.freeBuildPoints
-                        }
-                    , time = m.time + dt
-                }
-                |> applyGlobalEffects tickResult.globalEffects
+
+tickGoToNextWave :
+    TypedData
+    -> { a | goToNextWave : Bool }
+    -> { a | goToNextWave : Bool }
+tickGoToNextWave typedData tickData =
+    let
+        goToNextWave : Bool
+        goToNextWave =
+            case typedData.completedWord of
+                Nothing ->
+                    False
+
+                Just word ->
+                    word == "NextWave"
+    in
+    { tickData
+        | goToNextWave = goToNextWave
+    }
 
 
 tickRunning : Float -> RunningData -> ( Model, PlaySoundCommand )
@@ -1545,21 +1563,34 @@ renderAliveText : String -> String -> LiveTextStyle -> Bool -> ( Float, Float ) 
 renderAliveText typed text style enabled ( x, y ) =
     Html.Styled.div
         [ Html.Styled.Attributes.css
-            ([ Css.position Css.absolute
-             , Css.left (Css.px (gameRenderXOffset + x))
-             , Css.top (Css.px (gameRenderYOffset + y))
-             ]
-                ++ (case style of
-                        LiveTextStyleZombie _ ->
-                            [ Css.backgroundColor (Css.rgba 0 0 0 0.4)
-                            , Css.borderRadius (Css.px 10)
-                            , Css.padding2 (Css.px 1) (Css.px 6)
-                            , Css.transform (Css.translate (Css.pct -50))
-                            ]
+            (case style of
+                LiveTextStyleNextWaveHud ->
+                    [ Css.position Css.absolute
+                    , Css.left (Css.px (gameRenderXOffset + x))
+                    , Css.top (Css.px (gameRenderYOffset + y))
+                    , Css.transform (Css.translate (Css.pct -50))
+                    , Css.fontSize (Css.px 50)
+                    , Css.color (Css.hex "CCCCCC")
+                    , Css.property "-webkit-text-stroke-width" "2.0px"
+                    , Css.property "-webkit-text-stroke-color" "black"
+                    ]
 
-                        _ ->
-                            []
-                   )
+                _ ->
+                    [ Css.position Css.absolute
+                    , Css.left (Css.px (gameRenderXOffset + x))
+                    , Css.top (Css.px (gameRenderYOffset + y))
+                    ]
+                        ++ (case style of
+                                LiveTextStyleZombie _ ->
+                                    [ Css.backgroundColor (Css.rgba 0 0 0 0.4)
+                                    , Css.borderRadius (Css.px 10)
+                                    , Css.padding2 (Css.px 1) (Css.px 6)
+                                    , Css.transform (Css.translate (Css.pct -50))
+                                    ]
+
+                                _ ->
+                                    []
+                           )
             )
         ]
         (if enabled && firstCharEqual typed text then
@@ -1571,15 +1602,8 @@ renderAliveText typed text style enabled ( x, y ) =
         |> Html.Styled.toUnstyled
 
 
-renderDeadText : String -> DeadTextStyle -> ( Float, Float ) -> Html msg
-renderDeadText text style point =
-    let
-        x =
-            Tuple.first point
-
-        y =
-            Tuple.second point
-    in
+renderDeadText : String -> xDeadTextStyle -> ( Float, Float ) -> Html msg
+renderDeadText text style ( x, y ) =
     Html.Styled.div
         [ Html.Styled.Attributes.css
             [ Css.position Css.absolute
@@ -1738,6 +1762,7 @@ type LiveTextStyle
     | LiveTextStyleMenu
     | LiveTextStyleBuildMenu
     | LiveTextStyleTower
+    | LiveTextStyleNextWaveHud
 
 
 type DeadTextStyle
@@ -1798,7 +1823,16 @@ renderBetweenWaves model =
         |> appendRenderablesAndLiveText (renderBuildChoices model.shared)
         |> appendRenderables (renderTowers model.shared.towers)
         |> appendMaybeRenderable (renderHelpScreen model.shared.helpScreens)
-        |> appendLiveText (renderHud ("Next wave in " ++ timeToNextWaveStr model.time ++ "s"))
+        |> appendLiveTexts (renderBetweenWavesHud model.time)
+
+
+renderBetweenWavesHud : Float -> List LiveText
+renderBetweenWavesHud timeToNextWave =
+    [ { renderPoint = ( renderWidth / 2, renderHeightMap / 5 )
+      , style = Alive LiveTextStyleNextWaveHud True
+      , text = "NextWave"
+      }
+    ]
 
 
 renderMainMenu : MainMenuData -> ( List Renderable, List LiveText )
@@ -1863,9 +1897,9 @@ appendRenderable renderable ( renderables, liveTexts ) =
     ( renderables ++ [ renderable ], liveTexts )
 
 
-appendLiveText : LiveText -> ( List Renderable, List LiveText ) -> ( List Renderable, List LiveText )
-appendLiveText text ( renderables, liveTexts ) =
-    ( renderables, liveTexts ++ [ text ] )
+appendLiveTexts : List LiveText -> ( List Renderable, List LiveText ) -> ( List Renderable, List LiveText )
+appendLiveTexts texts ( renderables, liveTexts ) =
+    ( renderables, liveTexts ++ texts )
 
 
 appendRenderables : List Renderable -> ( List Renderable, List LiveText ) -> ( List Renderable, List LiveText )
@@ -2021,10 +2055,10 @@ renderTower t =
         |> Tuple.first
 
 
-renderHud : String -> LiveText
-renderHud text =
+renderLiveHud : String -> LiveText
+renderLiveHud text =
     { renderPoint = ( renderWidth / 2, renderHeightMap / 5 )
-    , style = Dead DeadTextStyleNextWave
+    , style = Alive LiveTextStyleBuildMenu True
     , text = text
     }
 
