@@ -25,4 +25,5 @@
 
 # Bugs
 
-* No bugs :D
+* Upgrades are free between waves
+* No sound, stopped working with new netlify deploy
