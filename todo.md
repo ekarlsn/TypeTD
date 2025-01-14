@@ -21,7 +21,6 @@
 * Settings
     * Font size
     * Volume bg/effects
-* Next level skip waiting
 
 # Bugs
 
