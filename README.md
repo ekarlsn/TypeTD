@@ -2,6 +2,8 @@
 
 A tower defence style game, totally powered by typing on your keyboard
 
+![TypeTD Game Screenshot](screenshots/gameplay.png)
+
 Automatically published at https://delightful-pony-dd09ad.netlify.app/
 
 ## Develepment
